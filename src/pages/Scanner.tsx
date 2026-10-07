@@ -8,7 +8,7 @@ import {
   ScanLine,
   XCircle,
 } from "lucide-react";
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   getEventById,
@@ -17,11 +17,15 @@ import {
   isCheckedIn,
   recordAttendance,
 } from "@/lib/store";
+import AssignQrDialog from "@/components/AssignQrDialog";
 
 type ScanResult = {
   status: "success" | "warning" | "error";
   message: string;
 };
+
+// UUID regex validation
+const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export default function Scanner() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -37,9 +41,13 @@ export default function Scanner() {
   const [count, setCount] = useState(() =>
     eventId ? getCheckInCount(eventId) : 0
   );
+  
+  // State for the assignment dialog
+  const [assignQrData, setAssignQrData] = useState<string | null>(null);
 
   useEffect(() => {
     if (!event) return;
+    if (assignQrData) return; // Pause scanner logic if dialog is open
 
     const scanner = new Html5Qrcode("qr-reader-region", { verbose: false });
     scannerRef.current = scanner;
@@ -48,25 +56,36 @@ export default function Scanner() {
 
     const handleScan = (data: string) => {
       if (!active) return;
-      // Debounce: ignore the same code re-detected within 2s
       const now = Date.now();
+      const qrData = data.trim();
+      
+      // Debounce: ignore the same code re-detected within 2s
       if (
-        data === lastScanRef.current.data &&
+        qrData === lastScanRef.current.data &&
         now - lastScanRef.current.at < 2000
       ) {
         return;
       }
-      lastScanRef.current = { data, at: now };
+      lastScanRef.current = { data: qrData, at: now };
 
-      const participant = getParticipantByQrData(data);
-      if (!participant) {
+      if (!uuidRegex.test(qrData)) {
         setLastResult({
           status: "error",
-          message: "Invalid QR code — not a registered participant.",
+          message: "Formato inválido. Não é um crachá do sistema.",
         });
-        toast.error("Invalid QR code", {
-          description: "Not a registered participant badge.",
+        toast.error("QR Code Inválido", {
+          description: "O código lido não possui a estrutura correta (UUID).",
         });
+        return;
+      }
+
+      const participant = getParticipantByQrData(qrData);
+      if (!participant) {
+        setLastResult({
+          status: "warning",
+          message: "QR code não encontrado na base de dados.",
+        });
+        setAssignQrData(qrData); // Triggers the assignment dialog
         return;
       }
 
@@ -221,6 +240,17 @@ export default function Scanner() {
           </p>
         )}
       </div>
+
+      <AssignQrDialog
+        qrData={assignQrData}
+        open={!!assignQrData}
+        onOpenChange={(open) => !open && setAssignQrData(null)}
+        onAssigned={() => {
+          // You could optionally trigger a check-in right after assignment here, 
+          // or just let them scan again. We just clear it to close dialog.
+          setAssignQrData(null);
+        }}
+      />
     </div>
   );
 }

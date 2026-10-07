@@ -93,6 +93,19 @@ export function updateParticipant(
   return list[idx];
 }
 
+export function updateParticipantQr(
+  id: string,
+  qrData: string
+): Participant | undefined {
+  const list = loadParticipants();
+  const idx = list.findIndex((p) => p.id === id);
+  if (idx === -1) return undefined;
+  list[idx] = { ...list[idx], qrData: qrData.trim() };
+  saveParticipants(list);
+  syncToSupabase("participants", { id: list[idx].id, full_name: list[idx].fullName, qr_data: list[idx].qrData });
+  return list[idx];
+}
+
 /** Deletes a participant and cascades: removes all of their attendance records. */
 export function deleteParticipant(id: string): void {
   saveParticipants(loadParticipants().filter((p) => p.id !== id));

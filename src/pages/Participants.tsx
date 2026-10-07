@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, QrCode, Trash2, Users } from "lucide-react";
+import { Pencil, QrCode, Trash2, Users, ScanLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,7 @@ import ParticipantBadge from "@/components/ParticipantBadge";
 import ParticipantDetailsDialog from "@/components/ParticipantDetailsDialog";
 import EditParticipantDialog from "@/components/EditParticipantDialog";
 import DeleteConfirmDialog from "@/components/DeleteConfirmDialog";
+import ReplaceQrDialog from "@/components/ReplaceQrDialog";
 
 export default function Participants() {
   const [participants, setParticipants] = useState<Participant[]>(() =>
@@ -42,6 +43,7 @@ export default function Participants() {
   const [detailsTarget, setDetailsTarget] = useState<Participant | null>(null);
   const [editTarget, setEditTarget] = useState<Participant | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Participant | null>(null);
+  const [replaceQrTarget, setReplaceQrTarget] = useState<Participant | null>(null);
 
   const refresh = () => setParticipants(loadParticipants());
 
@@ -139,6 +141,14 @@ export default function Participants() {
                             <Button
                               variant="outline"
                               size="icon"
+                              title="Replace QR Code"
+                              onClick={() => setReplaceQrTarget(participant)}
+                            >
+                              <ScanLine className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
                               title="View badge"
                               onClick={() => setBadgeTarget(participant)}
                             >
@@ -205,6 +215,14 @@ export default function Participants() {
         description="This will permanently remove the participant and delete all of their attendance records."
         confirmLabel="Delete"
         onConfirm={handleDelete}
+      />
+
+      {/* Replace QR */}
+      <ReplaceQrDialog
+        participant={replaceQrTarget}
+        open={!!replaceQrTarget}
+        onOpenChange={(open) => !open && setReplaceQrTarget(null)}
+        onReplaced={refresh}
       />
     </div>
   );
